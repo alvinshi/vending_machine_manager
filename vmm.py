@@ -1,4 +1,6 @@
 import helper as h
+import shipment
+import box
 
 def manual_input_mode():
 	required_args = 3
@@ -11,7 +13,7 @@ def manual_input_mode():
 			return None
 		name = l_in[0].decode('utf-8')
 		try:
-			unit_cost = int(l_in[1])
+			unit_cost = float(l_in[1])
 			numerator, denominator = l_in[2].split("/")
 			numerator = int(numerator)
 			denominator = int(denominator)
@@ -27,6 +29,7 @@ def manual_input_mode():
 		parsed = input_parse(text_in)
 		if (parsed):
 			name, unit_cost, numerator, denominator = parsed
+			new_box = box.Box(name, unit_cost, numerator, denominator)
 
 def csv_import_mode():
 	print("CSV IMPORT MODE")
