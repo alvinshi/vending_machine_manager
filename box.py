@@ -4,3 +4,6 @@ class Box:
 		self.unit_cost = unit_cost
 		self.numerator = numerator
 		self.denominator = denominator
+
+	def __str__(self):
+		return self.name
