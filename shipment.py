@@ -25,5 +25,13 @@ class Shipment:
 			self.threshold_reached = True
 		return True
 
+	def remove_recent(self, box, amount):
+		for i in xrange(amount):
+			poped_box = self.boxes.pop()
+			assert(poped_box.name == box.name)
+			self.total_cost -= poped_box.unit_cost
+			if poped_box.unit_cost >= self.cost_threshold:
+				self.threshold_reached = False
+
 	def __str__(self):
 		return "Shipment %d" % (self.index + 1)

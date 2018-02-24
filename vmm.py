@@ -1,7 +1,8 @@
 import os, errno
 import random
+import openpyxl
+from openpyxl import Workbook
 
-import xlsxwriter
 from worksheet import Worksheet
 import helper as h
 from shipment import Shipment
@@ -9,6 +10,7 @@ from box import Box
 
 OUPTPUT_FOLDER_PATH = "output"
 SHIPMENTS = 200
+TRY_THRESHOLD = 50
 
 
 def manual_input_mode():
@@ -16,6 +18,9 @@ def manual_input_mode():
 	is_full = False
 
 	def input_parse(t):
+		if t == "backtrack":
+			return ("backtrack", 0, 0, 0)
+
 		l_in = t.split()
 		if (len(l_in) != required_args):
 			print("Invalid Input: Please input three parameters with the descripted format")
@@ -39,21 +44,13 @@ def manual_input_mode():
 		h.create_dir(OUPTPUT_FOLDER_PATH)
 
 		# Initializie the workbook
-		workbook = xlsxwriter.Workbook(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
+		workbook = Workbook(write_only=False)
 		worksheets = []
 		shipments = []
 		for i in xrange(SHIPMENTS):
-			worksheets.append(Worksheet(workbook.add_worksheet("Shipment%d" % (i + 1))))
+			worksheets.append(Worksheet(workbook.create_sheet("Shipment%d" % (i + 1), i)))
 			shipments.append(Shipment(i))
 		return (workbook, worksheets, shipments)
-
-	def reopen(wrapped_worksheets):
-		workbook = xlsxwriter.Workbook(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
-		worksheets = workbook.worksheets()
-		for index, worksheet in enumerate(worksheets):
-			wrapped_worksheets[index].replace(worksheet)
-		return workbook
-
 
 	def print_allocation_result(allocation_results):
 		print("Allocation Result:")
@@ -67,7 +64,9 @@ def manual_input_mode():
 		allocation_results = {}
 		for new_box in new_boxes:
 			assigned = False
-			while (not assigned):
+			count = 0
+			while (not assigned) and (count < TRY_THRESHOLD):
+				count += 1
 				index = random.randint(0, SHIPMENTS - 1)
 				shipment = shipments[index]
 				assigned = shipment.add(new_box)
@@ -79,32 +78,48 @@ def manual_input_mode():
 					index = shipment.index
 					args = [new_box.name, new_box.unit_cost]
 					worksheets[index].write(args)
+		if (count == TRY_THRESHOLD):
+			return (None, allocation_results, 
+				"Too many items in the box, please try to assign the item manually, an error may exist")
 		print_allocation_result(allocation_results)
+		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
+		return (new_boxes[0], allocation_results)
 
-
+	def backtrack(new_box, allocation_results, shipments, worksheets):
+		assert(len(shipments) == len(worksheets))
+		assert(len(shipments) == SHIPMENTS)
+		if (new_box == None): return
+		for shipment, amount in allocation_results.iteritems():
+			shipment.remove_recent(new_box, amount)
+			worksheets[shipment.index].delete_row(amount)
+			print("delete")
+		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
 
 	print("MANUAL INPUT MODE")
 	(workbook, worksheets, shipments) = init()
 
+	# Start to take in inputs
+	new_box = None
+	allocation_results = {}
 	while (not is_full):
 		print("Please enter '<Product_Name> <Product_Price> <N/Ns>': ")
 		text_in = h.Raw_Input()
 		parsed = input_parse(text_in)
 		if (parsed):
 			name, unit_cost, numerator, denominator = parsed
+			if name == 'backtrack':
+				backtrack(new_box, allocation_results, shipments, worksheets)
+			else:
+				# Create new_boxes
+				new_boxes = []
+				for i in xrange(SHIPMENTS / denominator * numerator):
+					new_boxes.append(Box(name, unit_cost, numerator, denominator))
 
-			# Create new_boxes
-			new_boxes = []
-			for i in xrange(SHIPMENTS / denominator * numerator):
-				new_boxes.append(Box(name, unit_cost, numerator, denominator))
-
-			# Allocate new_boxes
-			allocate_boxes(new_boxes, shipments, worksheets)
-
-			# This is a very inefficient processs
-			# However, this is done so that the user can see changes in the xlsx sheet in real time
-			workbook.close()
-			workbook = reopen(worksheets)
+				# Allocate new_boxes
+				(new_box, allocation_results, error) = allocate_boxes(new_boxes, shipments, worksheets)
+				if (new_box == None):
+					print(error)
+					quit()
 
 def csv_import_mode():
 	print("CSV IMPORT MODE")
