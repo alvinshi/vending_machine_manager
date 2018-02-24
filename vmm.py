@@ -11,6 +11,7 @@ from box import Box
 OUPTPUT_FOLDER_PATH = "output"
 SHIPMENTS = 200
 TRY_THRESHOLD = 50
+CAPACITY = 100
 
 
 def manual_input_mode():
@@ -20,6 +21,8 @@ def manual_input_mode():
 	def input_parse(t):
 		if t == "backtrack":
 			return ("backtrack", 0, 0, 0)
+		elif t == "generate_report":
+			return ("generate_report", 0, 0, 0)
 
 		l_in = t.split()
 		if (len(l_in) != required_args):
@@ -31,9 +34,9 @@ def manual_input_mode():
 			numerator, denominator = l_in[2].split("/")
 			numerator = int(numerator)
 			denominator = int(denominator)
-			# if shipments % denominator != 0:
-			# 	print("Invalid Input: Ns must be a divider of %d" % SHIPMENTS)
-			# 	return None
+			if SHIPMENTS % denominator != 0:
+				print("Invalid Input: Ns must be a divider of %d" % SHIPMENTS)
+				return None
 		except TypeError:
 			print("Invalid Input: %s"% t)
 			return None
@@ -56,7 +59,6 @@ def manual_input_mode():
 		print("Allocation Result:")
 		for key, value in allocation_results.iteritems():
 			print("%s : %d" % (str(key), value))
-
 
 	def allocate_boxes(new_boxes, shipments, worksheets):
 		assert(len(shipments) == len(worksheets))
@@ -83,7 +85,7 @@ def manual_input_mode():
 				"Too many items in the box, please try to assign the item manually, an error may exist")
 		print_allocation_result(allocation_results)
 		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
-		return (new_boxes[0], allocation_results)
+		return (new_boxes[0], allocation_results, "")
 
 	def backtrack(new_box, allocation_results, shipments, worksheets):
 		assert(len(shipments) == len(worksheets))
@@ -92,8 +94,19 @@ def manual_input_mode():
 		for shipment, amount in allocation_results.iteritems():
 			shipment.remove_recent(new_box, amount)
 			worksheets[shipment.index].delete_row(amount)
-			print("delete")
 		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
+
+	def generate_report(shipments):
+		f = open(OUPTPUT_FOLDER_PATH+"/report.txt", "w+")
+		for index, shipment in enumerate(shipments):
+			f.write("Shipment %d :\n" % (index + 1))
+			length = len(shipment.boxes)
+			f.write("  Total Boxes: %d\n" % length)
+			f.write("  Total Cost:  {:.2f}\n".format(shipment.total_cost))
+			if (length > 0):
+				f.write("  Average Cost:  {:.2f}\n".format(shipment.total_cost / len(shipment.boxes)))
+				f.write("  Has Big Price: %r\n" % shipment.threshold_reached)
+		f.close()
 
 	print("MANUAL INPUT MODE")
 	(workbook, worksheets, shipments) = init()
@@ -101,14 +114,17 @@ def manual_input_mode():
 	# Start to take in inputs
 	new_box = None
 	allocation_results = {}
-	while (not is_full):
-		print("Please enter '<Product_Name> <Product_Price> <N/Ns>': ")
+	total_boxes = 0
+	while (total_boxes < SHIPMENTS * CAPACITY):
+		print("Please enter '<Product_Name> <Product_Price> <N/Ns>' or 'backtrack' or 'generate_report' or 'q': ")
 		text_in = h.Raw_Input()
 		parsed = input_parse(text_in)
 		if (parsed):
 			name, unit_cost, numerator, denominator = parsed
 			if name == 'backtrack':
 				backtrack(new_box, allocation_results, shipments, worksheets)
+			elif name == 'generate_report':
+				generate_report(shipments)
 			else:
 				# Create new_boxes
 				new_boxes = []
@@ -120,6 +136,7 @@ def manual_input_mode():
 				if (new_box == None):
 					print(error)
 					quit()
+				total_boxes += SHIPMENTS / denominator * numerator
 
 def csv_import_mode():
 	print("CSV IMPORT MODE")

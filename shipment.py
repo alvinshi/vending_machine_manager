@@ -5,7 +5,7 @@ class Shipment:
 		self.index = index
 		self.capacity = capacity
 		self.boxes = []
-		self.total_cost = 0
+		self.total_cost = 0.0
 		self.cost_threshold = cost_threshold
 		self.threshold_reached = False
 
