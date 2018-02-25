@@ -15,14 +15,14 @@ CAPACITY = 100
 
 
 def manual_input_mode():
-	required_args = 3
+	required_args = 4
 	is_full = False
 
 	def input_parse(t):
 		if t == "backtrack":
-			return ("backtrack", 0, 0, 0)
+			return ("backtrack", 0, 0, 0, 0)
 		elif t == "generate_report":
-			return ("generate_report", 0, 0, 0)
+			return ("generate_report", 0, 0, 0, 0)
 
 		l_in = t.split()
 		if (len(l_in) != required_args):
@@ -34,13 +34,17 @@ def manual_input_mode():
 			numerator, denominator = l_in[2].split("/")
 			numerator = int(numerator)
 			denominator = int(denominator)
+			is_random = (l_in[3] == "RANDOM")
 			if SHIPMENTS % denominator != 0:
 				print("Invalid Input: Ns must be a divider of %d" % SHIPMENTS)
+				return None
+			if (not is_random) and (numerator < denominator):
+				print("Invalid Input: In non-random mode, N must larger or equal Ns")
 				return None
 		except TypeError:
 			print("Invalid Input: %s"% t)
 			return None
-		return (name, unit_cost, numerator, denominator)
+		return (name, unit_cost, numerator, denominator, is_random)
 
 	def init():
 		# Initialize the output directory
@@ -60,32 +64,48 @@ def manual_input_mode():
 		for key, value in allocation_results.iteritems():
 			print("%s : %d" % (str(key), value))
 
-	def allocate_boxes(new_boxes, shipments, worksheets):
+	def allocate_boxes(new_boxes, shipments, worksheets, is_random, numerator, denominator):
 		assert(len(shipments) == len(worksheets))
 		assert(len(shipments) == SHIPMENTS)
 		allocation_results = {}
-		for new_box in new_boxes:
-			assigned = False
-			count = 0
-			while (not assigned) and (count < TRY_THRESHOLD):
-				count += 1
-				index = random.randint(0, SHIPMENTS - 1)
-				shipment = shipments[index]
-				assigned = shipment.add(new_box)
-				if assigned:
-					if not shipment in allocation_results:
-						allocation_results[shipment] = 1
-					else:
-						allocation_results[shipment] = allocation_results[shipment] + 1
-					index = shipment.index
+		new_box_sample = new_boxes
+		# Non random allocation
+		if (not is_random):
+			box_per_shipment = numerator / denominator
+			for index, shipment in enumerate(shipments):
+				for i in xrange(box_per_shipment):
+					new_box = new_boxes.pop()
+					assigned = shipment.add(new_box)
+					if (not assigned):
+						return (new_boxes[0], allocation_results,
+							"Shipments are too full for this allocation, please backtrack")
 					args = [new_box.name, new_box.unit_cost]
 					worksheets[index].write(args)
-		if (count == TRY_THRESHOLD):
-			return (None, allocation_results, 
-				"Too many items in the box, please try to assign the item manually, an error may exist")
+		# Random allocation
+		else:
+			for new_box in new_boxes:
+				assigned = False
+				count = 0
+				while (not assigned) and (count < TRY_THRESHOLD):
+					count += 1
+					index = random.randint(0, SHIPMENTS - 1)
+					shipment = shipments[index]
+					assigned = shipment.add(new_box)
+					if assigned:
+						if not shipment in allocation_results:
+							allocation_results[shipment] = 1
+						else:
+							allocation_results[shipment] = allocation_results[shipment] + 1
+						index = shipment.index
+						args = [new_box.name, new_box.unit_cost]
+						worksheets[index].write(args)
+			if (count == TRY_THRESHOLD):
+				return (None, allocation_results, 
+					"Too many items in the box, please try to assign the item manually, an error may exist")
+
 		print_allocation_result(allocation_results)
 		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
-		return (new_boxes[0], allocation_results, "")
+		return (new_box_sample, allocation_results, "sucess")
 
 	def backtrack(new_box, allocation_results, shipments, worksheets):
 		assert(len(shipments) == len(worksheets))
@@ -116,11 +136,11 @@ def manual_input_mode():
 	allocation_results = {}
 	total_boxes = 0
 	while (total_boxes < SHIPMENTS * CAPACITY):
-		print("Please enter '<Product_Name> <Product_Price> <N/Ns>' or 'backtrack' or 'generate_report' or 'q': ")
+		print("Please enter '<Product_Name> <Product_Price> <N/Ns> <RANDOM/NOT>' or 'backtrack' or 'generate_report' or 'q': ")
 		text_in = h.Raw_Input()
 		parsed = input_parse(text_in)
 		if (parsed):
-			name, unit_cost, numerator, denominator = parsed
+			name, unit_cost, numerator, denominator, is_random = parsed
 			if name == 'backtrack':
 				backtrack(new_box, allocation_results, shipments, worksheets)
 			elif name == 'generate_report':
@@ -132,7 +152,8 @@ def manual_input_mode():
 					new_boxes.append(Box(name, unit_cost, numerator, denominator))
 
 				# Allocate new_boxes
-				(new_box, allocation_results, error) = allocate_boxes(new_boxes, shipments, worksheets)
+				(new_box, allocation_results, error) = \
+				allocate_boxes(new_boxes, shipments, worksheets, is_random, numerator, denominator)
 				if (new_box == None):
 					print(error)
 					quit()
