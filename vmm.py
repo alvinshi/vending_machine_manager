@@ -115,6 +115,8 @@ def manual_input_mode():
 			shipment.remove_recent(new_box, amount)
 			worksheets[shipment.index].delete_row(amount)
 		workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
+		# Destroy the allocation_results after backtracking
+		allocation_results.clear()
 
 	def generate_report(shipments):
 		f = open(OUPTPUT_FOLDER_PATH+"/report.txt", "w+")
