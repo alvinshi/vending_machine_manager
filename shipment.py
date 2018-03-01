@@ -2,7 +2,7 @@ from box import Box
 
 class Shipment:
 	def __init__(self, index, capacity=100, cost_threshold=200):
-		self.index = index
+		self.index = index # 0-indexing
 		self.capacity = capacity
 		self.boxes = []
 		self.total_cost = 0.0
@@ -32,6 +32,9 @@ class Shipment:
 			self.total_cost -= poped_box.unit_cost
 			if poped_box.unit_cost >= self.cost_threshold:
 				self.threshold_reached = False
+
+	def is_full(self):
+		return self.capacity == len(self.boxes)
 
 	def __str__(self):
 		return "Shipment %d" % (self.index + 1)
