@@ -224,7 +224,11 @@ def generate_report(shipments):
 def manual_input_mode():
 	is_full = False
 
-	print("MANUAL INPUT MODE")
+	h.print_sub_title("MANUAL INPUT MODE")
+	print("Keywords")
+	print("RAND: Random Allocation Mode")
+	print("P_RAND: Partially Random Allocation Mode")
+	print("N_RAND: None Random Allocation Mode")
 	(workbook, worksheets, shipments) = init()
 
 	# Start to take in inputs
