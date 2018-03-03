@@ -31,7 +31,7 @@ def print_title(title):
 
 def print_sub_title(title):
 	TITLE_LENGTH = 100;
-	offset = (len(title) % 2 == 0) if 0 else 1
+	offset = 0 if (len(title) % 2 == 0) else 1
 	print
 	print("*" * TITLE_LENGTH)
 	half_len = (TITLE_LENGTH - len(title) - 4) / 2
