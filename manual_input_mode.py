@@ -61,7 +61,7 @@ def input_parse(t):
 		return None
 	# Parse the input into the desired format
 	try:
-		box_index = int(l_in[0])
+		box_index = l_in[0].decode('utf-8')
 		name = l_in[1].decode('utf-8')
 		unit_cost = float(l_in[2])
 		numerator, denominator = l_in[3].split("/")
@@ -112,8 +112,11 @@ def allocation_results_update(allocation_results, shipment, n):
 	else:
 		allocation_results[shipment] = allocation_results[shipment] + n
 
-def worksheet_update(worksheets, index, new_box):
-	args = [new_box.box_index, new_box.name, new_box.unit_cost]
+# Happen after allocation results
+def worksheet_update(worksheets, shipment, new_box):
+	index = shipment.index
+	count = len(shipment.boxes)
+	args = [count, new_box.box_index, new_box.name, new_box.unit_cost]
 	worksheets[index].write(args)
 
 # The length of new_boxes may be larger than SHIPMENT * box_per_shipment
@@ -130,7 +133,7 @@ def non_random_allocation(new_boxes, shipments, worksheets, box_per_shipment, al
 
 			# Added successfully
 			allocation_results_update(allocation_results, shipment, 1)
-			worksheet_update(worksheets, shipment.index, new_box)
+			worksheet_update(worksheets, shipment, new_box)
 	return (new_box_sample, allocation_results, None)
 
 def random_allocation(new_boxes, shipments, worksheets, numerator, denominator, allocation_results):
@@ -146,7 +149,7 @@ def random_allocation(new_boxes, shipments, worksheets, numerator, denominator, 
 			assigned = shipment.add(new_box)
 			if assigned:
 				allocation_results_update(allocation_results, shipment, 1)
-				worksheet_update(worksheets, shipment.index, new_box)
+				worksheet_update(worksheets, shipment, new_box)
 			if (count == TRY_THRESHOLD):
 				return (new_box_sample, allocation_results, 
 					"Too many items in the box, please try to assign the item manually, an error may exist")
@@ -169,7 +172,7 @@ def partial_random_allocation(new_boxes, shipments, worksheets, numerator, denom
 		(new_box, allocation_results, msg) = non_random_allocation(new_boxes, shipments, worksheets, box_per_shipment, allocation_results)
 		if (msg != None):
 			return (new_box, allocation_results, msg) # Failed to allocate
-		print("Phase 1: non_random_allocation done")
+		print("Phase 1: non random allocation done")
 
 	# Start partial_random allocation
 	potential_shipments = get_potential_shipments(shipments, new_box_sample)
@@ -184,7 +187,8 @@ def partial_random_allocation(new_boxes, shipments, worksheets, numerator, denom
 		assigned = shipment.add(new_box)
 		assert(assigned)
 		allocation_results_update(allocation_results, shipment, 1)
-		worksheet_update(worksheets, shipment.index, new_box)
+		worksheet_update(worksheets, shipment, new_box)
+	print("Phase 2: partially random allocation done")
 	return (new_box_sample, allocation_results, None)
 
 def top_up(new_boxes, shipments, worksheets, numerator, denominator, allocation_results):
@@ -196,7 +200,7 @@ def top_up(new_boxes, shipments, worksheets, numerator, denominator, allocation_
 		assigned = shipment.add(new_box)
 		if assigned:
 			allocation_results_update(allocation_results, shipment, 1)
-			worksheet_update(worksheets, shipment.index, new_box)
+			worksheet_update(worksheets, shipment, new_box)
 		else:
 			new_boxes.append(new_box)
 		index = (index + 1) % SHIPMENTS
@@ -263,8 +267,8 @@ def generate_brief_excel(shipments):
 	for shipment in shipments:
 		i = shipment.index
 		worksheet = Worksheet(workbook.create_sheet("Shipment%d" % (i+ 1), i))
-		for box in shipment.boxes:
-			worksheet.write([box.box_index, box.name])
+		for index, box in enumerate(shipment.boxes):
+			worksheet.write([index + 1, box.box_index, box.name])
 	workbook.save(OUPTPUT_FOLDER_PATH + '/shipments_brief.xlsx')
 
 # Serve as the main message dispatcher
@@ -285,7 +289,7 @@ def manual_input_mode():
 	total_boxes = 0
 	while (total_boxes < SHIPMENTS * CAPACITY):
 		print("")
-		print("Please enter '<Product_Index> <Product_Name> <Product_Price> <N/Ns> <RAND/P_RAND/N_RAND/TOP_UP>'")
+		print("Please enter '<Box_Index> <Product_Name> <Product_Price> <N/Ns> <RAND/P_RAND/N_RAND/TOP_UP>'")
 		print("or 'backtrack' or 'generate_report' or 'output' or 'q': ")
 		text_in = h.Raw_Input()
 		parsed = input_parse(text_in) # it returns None if parsing failed
