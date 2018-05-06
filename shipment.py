@@ -13,7 +13,7 @@ class Shipment:
 		# Internal Constants
 		self.capacity = 100
 		self.prize_threshold = 50
-		self.big_prize_threshold = 200
+		self.big_prize_threshold = 100
 		self.prize_limit = 5
 		self.big_prize_limit = 1
 		

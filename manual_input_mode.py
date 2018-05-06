@@ -261,7 +261,7 @@ def generate_report(shipments):
 		f.write("  Total Cost:  {:.2f}\n".format(shipment.total_cost))
 		if (length > 0):
 			f.write("  Average Cost:  {:.2f}\n".format(shipment.total_cost / len(shipment.boxes)))
-			f.write("  Big Price Amount (>= 200): %d\n" % shipment.big_prize_threshold_counter)
+			f.write("  Big Price Amount (>= 100): %d\n" % shipment.big_prize_threshold_counter)
 			f.write("  Big Price Amount (>= 30): %d\n" % shipment.prize_threshold_counter)
 	f.close()
 
