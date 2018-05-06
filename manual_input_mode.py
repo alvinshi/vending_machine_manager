@@ -3,6 +3,7 @@ import os, errno
 import random
 import openpyxl
 from openpyxl import Workbook
+from collections import OrderedDict
 
 from worksheet import Worksheet
 import helper as h
@@ -17,11 +18,13 @@ OUPTPUT_FOLDER_PATH = "output"
 SHIPMENTS = 200
 TRY_THRESHOLD = 50
 CAPACITY = 100
+UNIT_PRICE = 20
 
 # String Definition
 BACKTRACK = "backtrack"
 GENERATE_REPORT = "generate_report"
 GENERATE_BRIEF_EXCEL = "output"
+TOTAL_UP = "total_up"
 
 RANDOM_MODE = "RAND"
 PARTIAL_RANDOM_MODE = "P_RAND"
@@ -54,6 +57,8 @@ def input_parse(t):
 		return (-1, GENERATE_REPORT, 0, 0, 0, 0)
 	elif t == GENERATE_BRIEF_EXCEL:
 		return (-1, GENERATE_BRIEF_EXCEL, 0, 0, 0, 0)
+	elif t == TOTAL_UP:
+		return (-1, TOTAL_UP, 0, 0, 0, 0)
 
 	l_in = t.split()
 	if (len(l_in) != REQUIRED_ARGS):
@@ -271,6 +276,19 @@ def generate_brief_excel(shipments):
 			worksheet.write([index + 1, box.box_index, box.name])
 	workbook.save(OUPTPUT_FOLDER_PATH + '/shipments_brief.xlsx')
 
+def write_worksheet_total(worksheet, shipment):
+	summary_dict = OrderedDict()
+	summary_dict["Total Cost"] = shipment.total_cost
+	summary_dict["Small Prize"] = shipment.small_prize_total_cost
+	summary_dict["Big Prize"] = shipment.total_cost - shipment.small_prize_total_cost
+	summary_dict["Revenue Rate"] = shipment.total_cost / (SHIPMENTS * UNIT_PRICE)
+	worksheet.write_summary(summary_dict)
+
+def total_up(workbook, worksheets, shipments):
+	for shipment in shipments:
+		write_worksheet_total(worksheets[shipment.index], shipment)
+	workbook.save(OUPTPUT_FOLDER_PATH + '/shipments.xlsx')
+
 # Serve as the main message dispatcher
 def manual_input_mode():
 	is_full = False
@@ -290,7 +308,7 @@ def manual_input_mode():
 	while (total_boxes < SHIPMENTS * CAPACITY):
 		print("")
 		print("Please enter '<Box_Index> <Product_Name> <Product_Price> <N/Ns> <RAND/P_RAND/N_RAND/TOP_UP>'")
-		print("or 'backtrack' or 'generate_report' or 'output' or 'q': ")
+		print("or 'backtrack' or 'generate_report' or 'output' or 'total_up' or 'q': ")
 		text_in = h.Raw_Input()
 		parsed = input_parse(text_in) # it returns None if parsing failed
 		if (parsed):
@@ -301,6 +319,8 @@ def manual_input_mode():
 				generate_report(shipments)
 			elif name == GENERATE_BRIEF_EXCEL:
 				generate_brief_excel(shipments)
+			elif name == TOTAL_UP:
+				total_up(workbook, worksheets, shipments)
 			else:
 				# Create new box objects
 				new_box_total = SHIPMENTS / denominator * numerator
@@ -319,3 +339,4 @@ def manual_input_mode():
 					else: 
 						total_boxes += SHIPMENTS / denominator * numerator
 						print("Allocation Succeeded, %d boxes are allocated" % new_box_total)
+						print("%d/%d boxes have been allocated in total" % (total_boxes, SHIPMENTS * CAPACITY))

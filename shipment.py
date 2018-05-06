@@ -8,6 +8,7 @@ class Shipment:
 		self.total_cost = 0.0
 		self.prize_threshold_counter = 0
 		self.big_prize_threshold_counter = 0
+		self.small_prize_total_cost = 0.0
 
 		# Internal Constants
 		self.capacity = 100
@@ -28,6 +29,8 @@ class Shipment:
 			self.prize_threshold_counter += 1
 		if box.unit_cost >= self.big_prize_threshold:
 			self.big_prize_threshold_counter += 1
+		if box.unit_cost < self.prize_threshold:
+			self.small_prize_total_cost += box.unit_cost
 		return True
 
 	def remove_recent(self, box, amount):
